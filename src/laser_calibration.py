@@ -12,8 +12,9 @@ import numpy as np
 from math import isnan
 import glob
 from ransac import *
-from matplotlib import pylab
-from mpl_toolkits import mplot3d
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 def augment(xyzs):
 	axyz = np.ones((len(xyzs), 4))
@@ -28,7 +29,7 @@ def is_inlier(coeffs, xyz, threshold):
 	return np.abs(coeffs.dot(augment([xyz]).T)) < threshold
 
 def plot_plane(a, b, c, d):
-    xx, yy = np.mgrid[:10, :10]
+    xx, yy = np.mgrid[-3:3, -1:1]*0.1
     return xx, yy, (-d - a * xx - b * yy) / c
 
 def intersection(plane,point,mtx):
@@ -38,15 +39,15 @@ def intersection(plane,point,mtx):
     cy = mtx[1,2]
     rt = [(point[0]-cx)/fx,(point[1]-cy)/fy,1]
     t = - plane[3]/((rt[0]*plane[0])+(rt[1]*plane[1])+(plane[2]))
-    point3D = np.array([rt[0]*t, rt[1]*t,rt[2]*t])
-    return(point3D)
+    point3D = np.array([[rt[0]*t, rt[1]*t,rt[2]*t]])
+    return point3D
 
 def fitPlane(norm,point):
-    A=norm[0]
-    B=norm[1]
-    C=norm[2]
-    D=-np.sum(norm*point)
-    return(A,B,C,D)
+    A = norm[0]
+    B = norm[1]
+    C = norm[2]
+    D = -np.sum(norm*point)
+    return (A, B, C, D)
 
 
 # import the necessary packages
@@ -81,7 +82,7 @@ objp = np.zeros((6*8,3), np.float32)
 objp[:,:2] = np.mgrid[0:8,0:6].T.reshape(-1,2)*0.04
 
 #laserp = np.zeros((6*8,3), np.float32)
-laser_points = np.array([])
+laser_points = np.array([[],[],[]]).T
 
 borders3d = np.array([[- 0.15, - 0.1, 0],
                       [- 0.15, + 0.3, 0],
@@ -90,20 +91,24 @@ borders3d = np.array([[- 0.15, - 0.1, 0],
 
 for fname in images:
     img = cv2.imread(fname)
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    img_undist = copy.deepcopy(img)
+
+    newcamera, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, img.shape[:2], 0)
+    cv2.undistort(img, camera_matrix, dist_coeffs, img_undist, newcamera)
+    gray_undist = cv2.cvtColor(img_undist, cv2.COLOR_BGR2GRAY)
 
     # Arrays to store object points and image points from all the images.
     objpoints = np.array([]) # 3d point in real world space
     imgpoints = np.array([]) # 2d points in image plane.
 
     # Find the chess board corners
-    ret, corners = cv2.findChessboardCorners(gray, (8,6), None)
+    ret, corners = cv2.findChessboardCorners(gray_undist, (8,6), None)
 
     # If found, add object points, image points (after refining them)
     if ret == True:
 #        objpoints=np.concatenate((objpoints,objp))
 
-        corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+        corners2 = cv2.cornerSubPix(gray_undist, corners, (11,11), (-1, -1), criteria)
 #        imgpoints=np.concatenate((imgpoints,corners2))
 
         # Draw and display the cornersç
@@ -126,13 +131,10 @@ for fname in images:
 
         R,_=cv2.Rodrigues(rvec)
         norm = R[0:3,2]
-        planeCam=fitPlane(norm,tvec)
+        checkerboard_plane = fitPlane(norm, tvec)
 
         #detect Laser pixels
-        frame = copy.deepcopy(img)
-        newcamera, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, img.shape[:2], 0)
-        cv2.undistort(img, camera_matrix, dist_coeffs, frame, newcamera)
-        subpixel_peaks = detect_laser_subpixel(frame, kernel, threshold, window_size);
+        subpixel_peaks = detect_laser_subpixel(img_undist, kernel, threshold, window_size);
         cv2.namedWindow('Laser Image', cv2.WINDOW_KEEPRATIO)
         for p in subpixel_peaks:
             x = p[0]
@@ -140,9 +142,10 @@ for fname in images:
             in_mask = (mask[int(x),int(y),0] > 0)
             if not isnan(x) and not isnan(y) and in_mask:
                 img2 = cv2.circle(img2,(int(y),int(x)),15,(0,0,255),1)
-                #Interseccion between planeCalib and point of laser
-                new_point = intersection(planeCam, p, newcamera)
-                laser_points=np.concatenate((laser_points, new_point))
+                #Interseccion between checkerboard_plane and point of laser
+                new_point = intersection(checkerboard_plane, p, newcamera)
+                # print 'Point ' +  str(p) + ' projected to ' + str(new_point)
+                laser_points = np.concatenate((laser_points, new_point))
 
         cv2.imshow('Laser Image', img2)
         cv2.waitKey(10)
@@ -152,24 +155,41 @@ for fname in images:
 #planeLaser = main_plane_fitting(laser_points)
 #%% Find laser plane with RANSAC
 
-fig = pylab.figure()
-ax = mplot3d.Axes3D(fig)
-
 n = 100
 max_iterations = 100
-goal_inliers = n * 0.3
+goal_inliers = n * 0.8
 
-xyzs = laser_points
+np.savetxt('laser_points.csv', laser_points, delimiter=' ')   # X is an array
 
-ax.scatter3D(xyzs.T[0], xyzs.T[1], xyzs.T[2])
-
-	# RANSAC
-laser_plane, b = run_ransac(xyzs, estimate, lambda x, y: is_inlier(x, y, 0.01), 3, goal_inliers, max_iterations)
+# RANSAC
+laser_plane, b = run_ransac(laser_points, estimate, lambda x, y: is_inlier(x, y, 0.01), 3, goal_inliers, max_iterations)
 a, b, c, d = laser_plane
 xx, yy, zz = plot_plane(a, b, c, d)
-ax.plot_surface(xx, yy, zz, color=(0, 1, 0, 0.5))
+
+fit_points_h = augment(laser_points[:3])
+
+data = np.linalg.svd(fit_points_h)[-1][-1, :]
+print 'data: ' + str(data)
+
+U, s, V = np.linalg.svd(fit_points_h, full_matrices=True)
+print 'U: ' +  str(U)
+print 's: ' +  str(s)
+print 'V: ' +  str(V)
+
+xx2, yy2, zz2 = plot_plane(-1.757035634445412e-01, 9.613484363790542e-01,  2.119845316631321e-01, -6.561783487838777e-02)
+
+laser_plane = [-1.757035634445412e-01, 9.613484363790542e-01,  2.119845316631321e-01, -6.561783487838777e-02]
+
+ax = plt.figure().gca(projection='3d')
+ax.plot_surface(xx, yy, zz, color=(0, 1, 0, 0.2))
+ax.plot_surface(xx2, yy2, zz2, color=(0, 0, 1, 0.2))
+ax.scatter3D(laser_points[:,0], laser_points[:,1], laser_points[:,2])
+ax.set_xlabel('X [m]')
+ax.set_ylabel('Y [m]')
+ax.set_zlabel('Z [m]')
+plt.show()
 
 np.save(args['output'] + "laserCalibration.npy", laser_plane)
 
-cv2.waitKey(10000)
-#cv2.destroyAllWindows()
+cv2.waitKey(0)
+cv2.destroyAllWindows()

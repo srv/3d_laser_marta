@@ -156,7 +156,7 @@ table2camera = np.array([[-0.2022,   -0.6316,    0.7485, -0.8541 ],
                          [ 0, 0, 0, 1]])
 tvec = np.array([-0.38777067, -0.13432474,  0.92294953])
 
-mask = cv2.imread('calibrations/mask.png')
+mask = cv2.imread('calibrations/mask2.png')
 
 step=1
 while step<321:
