@@ -137,11 +137,11 @@ for fname in images:
         subpixel_peaks = detect_laser_subpixel(img_undist, kernel, threshold, window_size);
         cv2.namedWindow('Laser Image', cv2.WINDOW_KEEPRATIO)
         for p in subpixel_peaks:
-            x = p[0]
-            y = p[1]
-            in_mask = (mask[int(x),int(y),0] > 0)
-            if not isnan(x) and not isnan(y) and in_mask:
-                img2 = cv2.circle(img2,(int(y),int(x)),15,(0,0,255),1)
+            u = p[0]
+            v = p[1]
+            in_mask = (mask[int(u),int(v),0] > 0)
+            if not isnan(u) and not isnan(v) and in_mask:
+                img2 = cv2.circle(img2,(int(v),int(u)),15,(0,0,255),1)
                 #Interseccion between checkerboard_plane and point of laser
                 new_point = intersection(checkerboard_plane, p, newcamera)
                 # print 'Point ' +  str(p) + ' projected to ' + str(new_point)
@@ -155,13 +155,14 @@ for fname in images:
 #planeLaser = main_plane_fitting(laser_points)
 #%% Find laser plane with RANSAC
 
-n = 100
 max_iterations = 100
-goal_inliers = n * 0.8
+goal_inliers = laser_points.shape[0] * 0.8
 
 np.savetxt('laser_points.csv', laser_points, delimiter=' ')   # X is an array
 
 # RANSAC
+print np.mean(laser_points, axis=0)
+
 laser_plane, b = run_ransac(laser_points, estimate, lambda x, y: is_inlier(x, y, 0.01), 3, goal_inliers, max_iterations)
 a, b, c, d = laser_plane
 xx, yy, zz = plot_plane(a, b, c, d)
@@ -181,7 +182,7 @@ xx2, yy2, zz2 = plot_plane(-1.757035634445412e-01, 9.613484363790542e-01,  2.119
 laser_plane = [-1.757035634445412e-01, 9.613484363790542e-01,  2.119845316631321e-01, -6.561783487838777e-02]
 
 ax = plt.figure().gca(projection='3d')
-ax.plot_surface(xx, yy, zz, color=(0, 1, 0, 0.2))
+ax.plot_surface(xx, yy, zz, color=(1, 0, 0, 0.2))
 ax.plot_surface(xx2, yy2, zz2, color=(0, 0, 1, 0.2))
 ax.scatter3D(laser_points[:,0], laser_points[:,1], laser_points[:,2])
 ax.set_xlabel('X [m]')

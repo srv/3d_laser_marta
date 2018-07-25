@@ -48,7 +48,7 @@ def calculate_rotation(frame, camera_matrix, dist_coeffs):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(gray, dictionary)
-    marker_length=0.03 #in meters
+    marker_length = 0.03 #in meters
 
     tvecs5=np.array([[[0,0,0]]])
     tvecs42=np.array([[[0,0,0]]])
@@ -56,30 +56,41 @@ def calculate_rotation(frame, camera_matrix, dist_coeffs):
     tvecs18=np.array([[[0,0,0]]])
 
     if ids is not None:
-        cv2.aruco.drawDetectedMarkers(frame, corners,ids)
-        i=0
-        while(i<len(ids)):
-            rvecs,tvecs,_objPoints  = cv2.aruco.estimatePoseSingleMarkers(corners[i], marker_length, camera_matrix, dist_coeffs)
-            cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
-            if (ids[i]==5):
-                R,_=cv2.Rodrigues(rvecs)
-                t = np.array([-0.09,0,0])
-                tvecs5=np.matmul(R,t.T)+tvecs
-            if (ids[i]==42):
-                R,_=cv2.Rodrigues(rvecs)
-                t = np.array([+0.09,0,0])
-                tvecs42=np.matmul(R,t.T)+tvecs
-            if (ids[i]==27):
-                R,_=cv2.Rodrigues(rvecs)
-                t = np.array([0,-0.09,0])
-                tvecs27=np.matmul(R,t.T)+tvecs
-            if (ids[i]==18):
-                R,_=cv2.Rodrigues(rvecs)
-                t = np.array([0,+0.09,0])
-                tvecs18=np.matmul(R,t.T)+tvecs
-            i=i+1
 
-        tvecs = (tvecs5+tvecs42+tvecs27+tvecs18)/len(ids) #si té tvecs més petit té més prioritat
+        max_y = 0
+        max_y_idx = 0
+        for idx, marker in enumerate(corners):
+            for corner in marker[0]:
+                if corner[1] > max_y:
+                    max_y = corner[1]
+                    max_y_idx = idx
+
+        cv2.aruco.drawDetectedMarkers(frame, corners,ids)
+        # i=0
+        i = max_y_idx
+        # while(i<len(ids)):
+        rvecs,tvecs,_objPoints  = cv2.aruco.estimatePoseSingleMarkers(corners[i], marker_length, camera_matrix, dist_coeffs)
+        cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
+        R, _ = cv2.Rodrigues(rvecs)
+        if (ids[i]==5):
+            t = np.array([-0.09,0,0])
+            # tvecs5=np.matmul(R,t.T)+tvecs
+            tvecs=np.matmul(R,t.T)+tvecs
+        if (ids[i]==42):
+            t = np.array([+0.09,0,0])
+            # tvecs42=np.matmul(R,t.T)+tvecs
+            tvecs=np.matmul(R,t.T)+tvecs
+        if (ids[i]==27):
+            t = np.array([0,-0.09,0])
+            # tvecs27=np.matmul(R,t.T)+tvecs
+            tvecs=np.matmul(R,t.T)+tvecs
+        if (ids[i]==18):
+            t = np.array([0,+0.09,0])
+            # tvecs18=np.matmul(R,t.T)+tvecs
+            tvecs=np.matmul(R,t.T)+tvecs
+            # i=i+1
+
+        # tvecs = (tvecs5+tvecs42+tvecs27+tvecs18)/len(ids) #si té tvecs més petit té més prioritat
         cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
         cv2.imshow('Tabe Calib',frame)
 
@@ -137,6 +148,11 @@ table_increment = np.array([[0.999807,-0.01963,0,0],
                             [0,0,1,0],
                             [0,0,0,1]])
 
+# table_increment = np.array([[1, 0,0,0],
+#                             [0,0.999807,-0.01963,0],
+#                             [0,0.01963,0.999807,0],
+#                             [0,0,0,1]])
+
 # La transformació del sistema de coordenades càmera a la taula (calibració, 4x4)
 table_1to2 = np.identity(4)
 table_2to1 = np.identity(4)
@@ -159,58 +175,56 @@ tvec = np.array([-0.38777067, -0.13432474,  0.92294953])
 mask = cv2.imread('calibrations/mask2.png')
 
 step=1
-while step<321:
+while step<110:
     # Detect table
-    fname = args['dir'] + '/step_num_table' + str(step) + '.' + args['format']
-    frameTable = cv2.imread(fname)
-    R,tvec = calculate_rotation(frameTable, camera_matrix, dist_coeffs)
-    camera_to_table_2[0:3,0:3]=R
-    camera_to_table_2[0:3,3]=tvec
+    if step < 2:
+        fname = args['dir'] + '/step_num_table' + str(step) + '.' + args['format']
+        frameTable = cv2.imread(fname)
+        newcamera, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, frameTable.shape[:2], 0)
+        frameTable_rect = cv2.undistort(frameTable, camera_matrix, dist_coeffs, None, newcamera)
+        R, tvec = calculate_rotation(frameTable_rect, newcamera, 0)
+        table_1_to_camera[0:3,0:3] = R
+        table_1_to_camera[0:3,3] = tvec
 
-    # camera_to_table_2 = np.matmul(camera_to_table_1, table_1to2)
+
+    camera_to_table_1 = np.linalg.inv(table_1_to_camera)
+    camera_to_table_2 = np.matmul(table_1to2, camera_to_table_1)
     # table_1_to_camera = np.linalg.inv(camera_to_table_1)
     # table_2_to_camera = np.matmul(table_2to1, table_1_to_camera)
-    table_2_to_camera = np.linalg.inv(camera_to_table_2)
+    # table_2_to_camera = np.linalg.inv(camera_to_table_2)
 
-    fname = args['dir'] + '/step_num' + str(step) + '.' + args['format']
-    frame = cv2.imread(fname)
+    # Increment rotation
+    table_1to2 = np.matmul(table_1to2, table_increment)
+    table_2to1 = np.linalg.inv(table_1to2)
+
 
     # undistort
+    fname = args['dir'] + '/step_num' + str(step) + '.' + args['format']
+    frame = cv2.imread(fname)
     newcamera, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, frame.shape[:2], 0)
     frame = cv2.undistort(frame, camera_matrix, dist_coeffs, None, newcamera)
-
     show_img = copy.deepcopy(frame)
-
     subpixel_peaks = detect_laser_subpixel(frame, kernel, threshold, window_size)
-    subpixel_peaks= np.expand_dims(subpixel_peaks, 1)
-    rectified_points = subpixel_peaks
-
     laser_points = np.array([[],[],[]]).T
-    for p in rectified_points:
-        x = p[0,0]
-        y = p[0,1]
-
-
-
+    for p in subpixel_peaks:
+        x = p[0]
+        y = p[1]
         in_mask = (mask[int(x),int(y),0] > 0)
-
         if not isnan(x) and not isnan(y) and in_mask:
-            new_point = intersection(laser_plane,(x,y), newcamera)
+            new_point = intersection(laser_plane, (x,y), newcamera)
             xp, yp, zp = new_point[0]
             dist = sqrt(xp*xp+yp*yp+zp*zp)
             if zp < 5.0 and dist < 10.0:
-                new_point = np.matmul(table_2_to_camera[:3,:3],  new_point.T) + table_2_to_camera[:3,3:]
+                new_point = np.matmul(camera_to_table_2[:3,:3],  new_point.T) + camera_to_table_2[:3,3:]
                 laser_points=np.concatenate((laser_points,new_point.T))
                 show_img = cv2.circle(show_img,(int(y),int(x)),15,(0,0,255),1)
 
     cv2.imshow('Laser Image', show_img)
     cv2.waitKey(3)
-
     viewer.append(laser_points, np.identity(4))
     viewer.drawnow()
 
-    table_1to2 = np.matmul(table_1to2, table_increment)
-    table_2to1 = np.linalg.inv(table_1to2)
+
 
     step=step+1
 
