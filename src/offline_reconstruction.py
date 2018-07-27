@@ -111,6 +111,8 @@ ap.add_argument("-D", "--distortion", required=True,
     help="Camera distortion coefficients file")
 ap.add_argument("-l", "--laser", required=True,
     help="Laser calibration file")
+ap.add_argument("-o", "--output", required=True,
+    help="Output prefix of the calibration result")
 args = vars(ap.parse_args())
 
 #def rotate_points(frame,points):
@@ -120,6 +122,8 @@ args = vars(ap.parse_args())
 camera_matrix = np.load(args['calibration'])
 dist_coeffs = np.load(args['distortion'])
 laser_plane = np.load(args['laser'])
+
+num_points = 0
 
 print('Camera calibration:')
 print camera_matrix
@@ -148,7 +152,7 @@ table_increment = np.array([[0.999807,-0.01963,0,0],
                             [0,0,1,0],
                             [0,0,0,1]])
 
-# table_increment = np.array([[1, 0,0,0],
+#table_increment = np.array([[1, 0,0,0],
 #                             [0,0.999807,-0.01963,0],
 #                             [0,0.01963,0.999807,0],
 #                             [0,0,0,1]])
@@ -161,21 +165,10 @@ camera_to_table_2 = np.identity(4)
 table_1_to_camera = np.identity(4)
 table_2_to_camera = np.identity(4)
 
-camera_to_table_1[0:3,0:3]=np.array([[-0.20223907, -0.91075492,  0.36003449],
-                                     [-0.63157544, -0.15967696, -0.75869344],
-                                     [ 0.748473  , -0.3808264 , -0.54291752]])
-camera_to_table_1[0:3,3]= np.array([[-0.38777067, -0.13432474,  0.92294953]])
-
-table2camera = np.array([[-0.2022,   -0.6316,    0.7485, -0.8541 ],
-                         [-0.9108, -0.1597, -0.3808, -0.0231],
-                         [ 0.3600, -0.7587, -0.5429,  0.5388],
-                         [ 0, 0, 0, 1]])
-tvec = np.array([-0.38777067, -0.13432474,  0.92294953])
-
 mask = cv2.imread('calibrations/mask2.png')
-
+points = np.array([[],[],[]]).T
 step=1
-while step<110:
+while step<321:
     # Detect table
     if step < 2:
         fname = args['dir'] + '/step_num_table' + str(step) + '.' + args['format']
@@ -185,17 +178,21 @@ while step<110:
         R, tvec = calculate_rotation(frameTable_rect, newcamera, 0)
         table_1_to_camera[0:3,0:3] = R
         table_1_to_camera[0:3,3] = tvec
-
-
+        
     camera_to_table_1 = np.linalg.inv(table_1_to_camera)
     camera_to_table_2 = np.matmul(table_1to2, camera_to_table_1)
+#    camera_to_table_2 = np.matmul(table_1_to_camera,table_1to2, camera_to_table_1)
+
     # table_1_to_camera = np.linalg.inv(camera_to_table_1)
     # table_2_to_camera = np.matmul(table_2to1, table_1_to_camera)
     # table_2_to_camera = np.linalg.inv(camera_to_table_2)
 
-    # Increment rotation
+#     Increment rotation
     table_1to2 = np.matmul(table_1to2, table_increment)
+#    table_1to2 =table_increment
     table_2to1 = np.linalg.inv(table_1to2)
+    
+    
 
 
     # undistort
@@ -206,18 +203,32 @@ while step<110:
     show_img = copy.deepcopy(frame)
     subpixel_peaks = detect_laser_subpixel(frame, kernel, threshold, window_size)
     laser_points = np.array([[],[],[]]).T
+    
+    
     for p in subpixel_peaks:
         x = p[0]
         y = p[1]
         in_mask = (mask[int(x),int(y),0] > 0)
         if not isnan(x) and not isnan(y) and in_mask:
-            new_point = intersection(laser_plane, (x,y), newcamera)
+            new_point = intersection(laser_plane, (y,x), newcamera)
             xp, yp, zp = new_point[0]
             dist = sqrt(xp*xp+yp*yp+zp*zp)
             if zp < 5.0 and dist < 10.0:
                 new_point = np.matmul(camera_to_table_2[:3,:3],  new_point.T) + camera_to_table_2[:3,3:]
+                num_points = num_points+1
+#                file.write(str(p[0]) + ' ' + str(p[1]) + ' ' + str(p[2])+'\n') 
                 laser_points=np.concatenate((laser_points,new_point.T))
+                points=np.concatenate((points,new_point.T))
                 show_img = cv2.circle(show_img,(int(y),int(x)),15,(0,0,255),1)
+                
+#    if step==1:
+
+#        np.savetxt('reconstruct_points1.csv', laser_points, delimiter=' ')   # X is an array
+#    if step==80:
+##        np.savetxt('reconstruct_points80.csv', laser_points, delimiter=' ')   # X is an array
+#    if step==160:
+#        np.savetxt('reconstruct_points160.csv', laser_points, delimiter=' ')   # X is an array
+                
 
     cv2.imshow('Laser Image', show_img)
     cv2.waitKey(3)
@@ -227,8 +238,19 @@ while step<110:
 
 
     step=step+1
-
+file = open("model.ply","w") 
+file.write('ply\n')
+file.write('format ascii 1.0\n')
+file.write('element vertex ' + str(num_points) + '\n')
+file.write('property float x\n')
+file.write('property float y\n')
+file.write('property float z\n')
+file.write('end_header\n')
+for p in points:
+    file.write(str(p[0]) + ' ' + str(p[1]) + ' ' + str(p[2])+'\n')
+file.close()
 print "Proceso acabado"
+np.savetxt('reconstruct_points.csv', laser_points, delimiter=' ')   # X is an array
 viewer.save()
 viewer.run()
 #else:

@@ -143,7 +143,7 @@ for fname in images:
             if not isnan(u) and not isnan(v) and in_mask:
                 img2 = cv2.circle(img2,(int(v),int(u)),15,(0,0,255),1)
                 #Interseccion between checkerboard_plane and point of laser
-                new_point = intersection(checkerboard_plane, p, newcamera)
+                new_point = intersection(checkerboard_plane, (v,u), newcamera)
                 # print 'Point ' +  str(p) + ' projected to ' + str(new_point)
                 laser_points = np.concatenate((laser_points, new_point))
 
@@ -158,7 +158,7 @@ for fname in images:
 max_iterations = 100
 goal_inliers = laser_points.shape[0] * 0.8
 
-np.savetxt('laser_points.csv', laser_points, delimiter=' ')   # X is an array
+#np.savetxt('laser_points.csv', laser_points, delimiter=' ')   # X is an array
 
 # RANSAC
 print np.mean(laser_points, axis=0)
