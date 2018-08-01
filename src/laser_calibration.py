@@ -111,7 +111,7 @@ for fname in images:
         corners2 = cv2.cornerSubPix(gray_undist, corners, (11,11), (-1, -1), criteria)
 #        imgpoints=np.concatenate((imgpoints,corners2))
 
-        # Draw and display the cornersç
+        # Draw and display the corners
         img2 = copy.deepcopy(img)
         img2 = cv2.drawChessboardCorners(img2, (8,6), corners2,ret)
         # cv2.imshow('img2',img2)
@@ -137,16 +137,20 @@ for fname in images:
         subpixel_peaks = detect_laser_subpixel(img_undist, kernel, threshold, window_size);
         cv2.namedWindow('Laser Image', cv2.WINDOW_KEEPRATIO)
         for p in subpixel_peaks:
-            u = p[0]
-            v = p[1]
-            in_mask = (mask[int(u),int(v),0] > 0)
-            if not isnan(u) and not isnan(v) and in_mask:
-                img2 = cv2.circle(img2,(int(v),int(u)),15,(0,0,255),1)
+            row = p[0]
+            col = p[1]
+            in_mask = (mask[int(row),int(col),0] > 0)
+            if not isnan(row) and not isnan(col) and in_mask:
+                img2 = cv2.circle(img2,(int(col),int(row)),15,(0,0,255),1)
                 #Interseccion between checkerboard_plane and point of laser
-                new_point = intersection(checkerboard_plane, (v,u), newcamera)
+                new_point = intersection(checkerboard_plane, (col,row), newcamera)
                 # print 'Point ' +  str(p) + ' projected to ' + str(new_point)
                 laser_points = np.concatenate((laser_points, new_point))
 
+        print p
+        cx = camera_matrix[0,2]
+        cy = camera_matrix[1,2]
+        img2 = cv2.circle(img2,(int(cy),int(cx)),15,(0,255,0),1)
         cv2.imshow('Laser Image', img2)
         cv2.waitKey(10)
 
@@ -179,11 +183,11 @@ print 'V: ' +  str(V)
 
 xx2, yy2, zz2 = plot_plane(-1.757035634445412e-01, 9.613484363790542e-01,  2.119845316631321e-01, -6.561783487838777e-02)
 
-laser_plane = [-1.757035634445412e-01, 9.613484363790542e-01,  2.119845316631321e-01, -6.561783487838777e-02]
+#laser_plane = [-1.757035634445412e-01, 9.613484363790542e-01,  2.119845316631321e-01, -6.561783487838777e-02]
 
 ax = plt.figure().gca(projection='3d')
 ax.plot_surface(xx, yy, zz, color=(1, 0, 0, 0.2))
-ax.plot_surface(xx2, yy2, zz2, color=(0, 0, 1, 0.2))
+#ax.plot_surface(xx2, yy2, zz2, color=(0, 0, 1, 0.2))
 ax.scatter3D(laser_points[:,0], laser_points[:,1], laser_points[:,2])
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')

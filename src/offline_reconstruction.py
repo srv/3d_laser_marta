@@ -180,6 +180,7 @@ while step<321:
         table_1_to_camera[0:3,3] = tvec
         
     camera_to_table_1 = np.linalg.inv(table_1_to_camera)
+    camera_to_table_1 = np.identity(4)
     camera_to_table_2 = np.matmul(table_1to2, camera_to_table_1)
 #    camera_to_table_2 = np.matmul(table_1_to_camera,table_1to2, camera_to_table_1)
 
@@ -206,11 +207,11 @@ while step<321:
     
     
     for p in subpixel_peaks:
-        x = p[0]
-        y = p[1]
-        in_mask = (mask[int(x),int(y),0] > 0)
-        if not isnan(x) and not isnan(y) and in_mask:
-            new_point = intersection(laser_plane, (y,x), newcamera)
+        row = p[0]
+        col = p[1]
+        in_mask = (mask[int(row),int(col),0] > 0)
+        if not isnan(row) and not isnan(col) and in_mask:
+            new_point = intersection(laser_plane, (col,row), newcamera)
             xp, yp, zp = new_point[0]
             dist = sqrt(xp*xp+yp*yp+zp*zp)
             if zp < 5.0 and dist < 10.0:
@@ -219,7 +220,7 @@ while step<321:
 #                file.write(str(p[0]) + ' ' + str(p[1]) + ' ' + str(p[2])+'\n') 
                 laser_points=np.concatenate((laser_points,new_point.T))
                 points=np.concatenate((points,new_point.T))
-                show_img = cv2.circle(show_img,(int(y),int(x)),15,(0,0,255),1)
+                show_img = cv2.circle(show_img,(int(col),int(row)),15,(0,0,255),1)
                 
 #    if step==1:
 
