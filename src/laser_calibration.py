@@ -42,11 +42,11 @@ def intersection(plane,point,mtx):
     point3D = np.array([[rt[0]*t, rt[1]*t,rt[2]*t]])
     return point3D
 
-def fitPlane(norm,point):
+def fitPlane(norm, point):
     A = norm[0]
     B = norm[1]
     C = norm[2]
-    D = -np.sum(norm*point)
+    D = -np.dot(norm,point)[0]
     return (A, B, C, D)
 
 
@@ -118,10 +118,10 @@ for fname in images:
         # cv2.waitKey(10)
 
 
-        retval, rvec, tvec = cv2.solvePnP(objp, corners2, camera_matrix, dist_coeffs)
+        retval, rvec, tvec = cv2.solvePnP(objp, corners2, newcamera, None)
 
         # Create mask
-        borders, jacobian = cv2.projectPoints(borders3d, rvec, tvec, camera_matrix, dist_coeffs)
+        borders, jacobian = cv2.projectPoints(borders3d, rvec, tvec, newcamera, None)
         borders = borders.reshape(4,2)
 
         mask = np.zeros(img.shape)
@@ -146,8 +146,6 @@ for fname in images:
                 new_point = intersection(checkerboard_plane, (col,row), newcamera)
                 # print 'Point ' +  str(p) + ' projected to ' + str(new_point)
                 laser_points = np.concatenate((laser_points, new_point))
-
-        print p
         cx = camera_matrix[0,2]
         cy = camera_matrix[1,2]
         img2 = cv2.circle(img2,(int(cy),int(cx)),15,(0,255,0),1)
@@ -159,13 +157,13 @@ for fname in images:
 #planeLaser = main_plane_fitting(laser_points)
 #%% Find laser plane with RANSAC
 
-max_iterations = 100
-goal_inliers = laser_points.shape[0] * 0.8
-
+max_iterations = 1000
+goal_inliers = laser_points.shape[0] * 0.85
+print goal_inliers
 #np.savetxt('laser_points.csv', laser_points, delimiter=' ')   # X is an array
 
 # RANSAC
-print np.mean(laser_points, axis=0)
+# print np.mean(laser_points, axis=0)
 
 laser_plane, b = run_ransac(laser_points, estimate, lambda x, y: is_inlier(x, y, 0.01), 3, goal_inliers, max_iterations)
 a, b, c, d = laser_plane
@@ -174,12 +172,12 @@ xx, yy, zz = plot_plane(a, b, c, d)
 fit_points_h = augment(laser_points[:3])
 
 data = np.linalg.svd(fit_points_h)[-1][-1, :]
-print 'data: ' + str(data)
+# print 'data: ' + str(data)
 
 U, s, V = np.linalg.svd(fit_points_h, full_matrices=True)
-print 'U: ' +  str(U)
-print 's: ' +  str(s)
-print 'V: ' +  str(V)
+# print 'U: ' +  str(U)
+# print 's: ' +  str(s)
+# print 'V: ' +  str(V)
 
 xx2, yy2, zz2 = plot_plane(-1.757035634445412e-01, 9.613484363790542e-01,  2.119845316631321e-01, -6.561783487838777e-02)
 
@@ -187,7 +185,7 @@ xx2, yy2, zz2 = plot_plane(-1.757035634445412e-01, 9.613484363790542e-01,  2.119
 
 ax = plt.figure().gca(projection='3d')
 ax.plot_surface(xx, yy, zz, color=(1, 0, 0, 0.2))
-#ax.plot_surface(xx2, yy2, zz2, color=(0, 0, 1, 0.2))
+ax.plot_surface(xx2, yy2, zz2, color=(0, 0, 1, 0.2))
 ax.scatter3D(laser_points[:,0], laser_points[:,1], laser_points[:,2])
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')
