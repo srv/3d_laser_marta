@@ -56,6 +56,8 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.sh
 # It's very important to transform the matrix to list.
 
 print('Saving results in ' + args['output'] + "calibration.yaml")
+print mtx
+print dist
 data = {'camera_matrix': np.asarray(mtx).tolist(), 'dist_coeff': np.asarray(dist).tolist()}
 np.save(args['output'] + "cameraIntrinsics.npy",mtx)
 np.save(args['output'] + "cameraDistCoeff.npy",dist)

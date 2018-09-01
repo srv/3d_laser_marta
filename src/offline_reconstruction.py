@@ -54,17 +54,12 @@ def intersection(plane,point,mtx):
     point3D = np.array([[rt[0]*t, rt[1]*t,rt[2]*t]])
     return(point3D)
 
-def calculate_rotation(frame, camera_matrix, dist_coeffs):
+def calculate_rotation_priority(frame, camera_matrix, dist_coeffs):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(gray, dictionary)
     marker_length = 0.03 #in meters
-
-    tvecs5=np.array([[[0,0,0]]])
-    tvecs42=np.array([[[0,0,0]]])
-    tvecs27=np.array([[[0,0,0]]])
-    tvecs18=np.array([[[0,0,0]]])
-
+            
     if ids is not None:
 
         max_y = 0
@@ -76,38 +71,81 @@ def calculate_rotation(frame, camera_matrix, dist_coeffs):
                     max_y_idx = idx
 
         cv2.aruco.drawDetectedMarkers(frame, corners,ids)
-        # i=0
+        
         i = max_y_idx
-        # while(i<len(ids)):
+        
         rvecs,tvecs,_objPoints  = cv2.aruco.estimatePoseSingleMarkers(corners[i], marker_length, camera_matrix, dist_coeffs)
         cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
         R, _ = cv2.Rodrigues(rvecs)
-        if ids[0][i]==5:
+        if ids[i][0]==5:
             t = np.array([-0.09,0,0])
-            # tvecs5=np.matmul(R,t.T)+tvecs
             tvecs=np.matmul(R,t.T)+tvecs
-        elif ids[0][i]==42:
+        elif ids[i][0]==42:
             t = np.array([+0.09,0,0])
-            # tvecs42=np.matmul(R,t.T)+tvecs
             tvecs=np.matmul(R,t.T)+tvecs
-        elif ids[0][i]==27:
+        elif ids[i][0]==27:
             t = np.array([0,-0.09,0])
-            # tvecs27=np.matmul(R,t.T)+tvecs
             tvecs=np.matmul(R,t.T)+tvecs
-        elif ids[0][i]==18:
+        elif ids[i][0]==18:
             t = np.array([0,+0.09,0])
-            # tvecs18=np.matmul(R,t.T)+tvecs
             tvecs=np.matmul(R,t.T)+tvecs
             # i=i+1
         else:
             print "Marker "+str(ids[i])+" NOT found!!!"
 
-        # tvecs = (tvecs5+tvecs42+tvecs27+tvecs18)/len(ids) #si té tvecs més petit té més prioritat
         cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
         cv2.imshow('Tabe Calib',frame)
+#        write_name = 'CalibracioArucoPriority.jpg'
+#        cv2.imwrite(write_name, frame)
+        cv2.waitKey(3)
+    return (R,tvecs)
+
+def calculate_rotation_all(frame, camera_matrix, dist_coeffs):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(gray, dictionary)
+    marker_length = 0.03 #in meters
+
+    tvecs5=np.array([[[0,0,0]]])
+    tvecs42=np.array([[[0,0,0]]])
+    tvecs27=np.array([[[0,0,0]]])
+    tvecs18=np.array([[[0,0,0]]])
+    
+    if ids is not None:
+        cv2.aruco.drawDetectedMarkers(frame,corners,ids)
+        i=0
+        while(i<len(ids)):
+            rvecs,tvecs,_objPoints  = cv2.aruco.estimatePoseSingleMarkers(corners[i],marker_length,camera_matrix,dist_coeffs)
+            cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
+            if (ids[i]==5):
+                R,_=cv2.Rodrigues(rvecs)
+                t = np.array([-0.09,0,0])
+                tvecs5=np.matmul(R,t.T)+tvecs
+            if (ids[i]==42):
+                R,_=cv2.Rodrigues(rvecs)
+                t = np.array([+0.09,0,0])
+                tvecs42=np.matmul(R,t.T)+tvecs
+            if (ids[i]==27):
+                R,_=cv2.Rodrigues(rvecs)
+                t = np.array([0,-0.09,0])
+                tvecs27=np.matmul(R,t.T)+tvecs
+            if (ids[i]==18):
+                R,_=cv2.Rodrigues(rvecs)
+                t = np.array([0,+0.09,0])
+                tvecs18=np.matmul(R,t.T)+tvecs
+
+            i=i+1
+              
+        tvecs = (tvecs5+tvecs42+tvecs27+tvecs18)/len(ids)
+            
+        cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
+        cv2.imshow('Tabe Calib',frame)
+#        write_name = 'CalibracioArucoAll.jpg'
+#        cv2.imwrite(write_name, frame)
         cv2.waitKey(3)
 
     return (R,tvecs)
+
 
 # import the necessary packages
 import argparse
@@ -126,6 +164,8 @@ ap.add_argument("-l", "--laser", required=True,
     help="Laser calibration file")
 ap.add_argument("-o", "--output", required=True,
     help="Output prefix of the calibration result")
+ap.add_argument("-t", "--table", required=True,
+    help="Output prefix of the calibration result")
 args = vars(ap.parse_args())
 
 #def rotate_points(frame,points):
@@ -135,6 +175,7 @@ args = vars(ap.parse_args())
 camera_matrix = np.load(args['calibration'])
 dist_coeffs = np.load(args['distortion'])
 laser_plane = np.load(args['laser'])
+option_table = args['table']
 
 num_points = 0
 num_raw_points = 0
@@ -150,7 +191,8 @@ print laser_plane
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 kernel = np.array([[0.000003, 0.000229, 0.005977, 0.060598, 0.24173, 0.382925, 0.24173, 0.060598, 0.005977, 0.000229, 0.000003]], np.float32)
-threshold = 0.1
+threshold = 0.02
+
 window_size = 7
 
 detected_points = np.array([[],[],[]]).T
@@ -166,15 +208,6 @@ table_increment = np.array([[0.999807,-0.01963,0,0],
                             [0,0,1,0],
                             [0,0,0,1]])
 
-# table_increment = np.array([[0.999807,0, -0.01963,0],
-#                             [0,0,0,0],
-#                             [0.01963,0,0.999807,0],
-#                             [0,0,0,1]]) NO
-
-# table_increment = np.array([[1, 0,0,0],
-#                             [0,0.999807,-0.01963,0],
-#                             [0,0.01963,0.999807,0],
-#                             [0,0,0,1]])
 
 # La transformació del sistema de coordenades càmera a la taula (calibració, 4x4)
 table_to_rot = np.identity(4)
@@ -184,17 +217,23 @@ camera_to_table_2 = np.identity(4)
 table_1_to_camera = np.identity(4)
 table_2_to_camera = np.identity(4)
 
-mask = cv2.imread('calibrations/mask2.png')
+mask = cv2.imread('calibrations/mask3.png')
 points = np.array([[],[],[]]).T
 step=1
 while step<321:
     # Detect table
-    if step < 4:
+    if step < 2:
         fname = args['dir'] + '/step_num_table' + str(step) + '.' + args['format']
+#        fname = args['dir'] + '/step_num' + str(step) + '.' + args['format']
         frameTable = cv2.imread(fname)
         newcamera, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, frameTable.shape[:2], 0)
         frameTable_rect = cv2.undistort(frameTable, camera_matrix, dist_coeffs, None, newcamera)
-        R, tvec = calculate_rotation(frameTable_rect, newcamera, 0)
+        if option_table == '1':
+            print ('Table calibration with all markers')
+            R, tvec = calculate_rotation_all(frameTable_rect, newcamera, 0)
+        if option_table == '2':
+            print ('Table calibration with priority')
+            R, tvec = calculate_rotation_priority(frameTable_rect, newcamera, 0)
         camera_to_table_1[0:3,0:3] = R
         camera_to_table_1[0:3,3] = tvec
         print 'Table transform: \n' + str(camera_to_table_1)
@@ -221,28 +260,29 @@ while step<321:
     for p in subpixel_peaks:
         row = p[0]
         col = p[1]
-        in_mask = (mask[int(row),int(col),0] > 0)
-        if not isnan(row) and not isnan(col) and in_mask:
-            new_point = intersection(laser_plane, (col,row), newcamera)
-            xp, yp, zp = new_point[0]
-            new_point[0] = xp, yp, zp
-            dist = sqrt(xp*xp+yp*yp+zp*zp)
-            raw_points=np.concatenate((raw_points,new_point))
-            num_raw_points = num_raw_points+1
-            if zp < 5.0 and dist < 10.0:
-                new_point = np.matmul(cam_to_cam2[:3,:3],  new_point.T) + cam_to_cam2[:3,3:]
-                num_points = num_points+1
-#                file.write(str(p[0]) + ' ' + str(p[1]) + ' ' + str(p[2])+'\n')
-                laser_points=np.concatenate((laser_points,new_point.T))
-                points=np.concatenate((points,new_point.T))
-                show_img = cv2.circle(show_img,(int(col),int(row)),15,(0,0,255),1)
+        if not isnan(row) and not isnan(col):
+            in_mask = (mask[int(row),int(col),0] > 0)
+            if not isnan(row) and not isnan(col) and in_mask:
+                new_point = intersection(laser_plane, (col,row), newcamera)
+                xp, yp, zp = new_point[0]
+                new_point[0] = xp, yp, zp
+                dist = sqrt(xp*xp+yp*yp+zp*zp)
+                raw_points=np.concatenate((raw_points,new_point))
+                num_raw_points = num_raw_points+1
+                if zp < 5.0 and dist < 10.0:
+                    new_point = np.matmul(cam_to_cam2[:3,:3],  new_point.T) + cam_to_cam2[:3,3:]
+                    num_points = num_points+1
+    #                file.write(str(p[0]) + ' ' + str(p[1]) + ' ' + str(p[2])+'\n')
+                    laser_points=np.concatenate((laser_points,new_point.T))
+                    points=np.concatenate((points,new_point.T))
+                    show_img = cv2.circle(show_img,(int(col),int(row)),15,(0,0,255),1)
     cv2.imshow('Laser Image', show_img)
     cv2.waitKey(3)
     viewer.append(laser_points, np.identity(4))
     viewer.drawnow()
     step = step + 1
 
-file = open("model2.ply","w")
+file = open("model3.ply","w")
 file.write('ply\n')
 file.write('format ascii 1.0\n')
 file.write('element vertex ' + str(num_points) + '\n')

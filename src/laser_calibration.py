@@ -126,7 +126,7 @@ for fname in images:
 
         mask = np.zeros(img.shape)
         mask = cv2.fillPoly(mask, pts = np.array([borders], dtype=np.int32), color=(255,255,255))
-        # cv2.imshow('Laser mask', mask)
+#        cv2.imshow('Laser mask', mask)
 
 
         R,_=cv2.Rodrigues(rvec)
@@ -146,15 +146,10 @@ for fname in images:
                 new_point = intersection(checkerboard_plane, (col,row), newcamera)
                 # print 'Point ' +  str(p) + ' projected to ' + str(new_point)
                 laser_points = np.concatenate((laser_points, new_point))
-        cx = camera_matrix[0,2]
-        cy = camera_matrix[1,2]
-        img2 = cv2.circle(img2,(int(cy),int(cx)),15,(0,255,0),1)
+       
         cv2.imshow('Laser Image', img2)
         cv2.waitKey(10)
 
-#    cv2.imshow('Laser Image', img)
-
-#planeLaser = main_plane_fitting(laser_points)
 #%% Find laser plane with RANSAC
 
 max_iterations = 1000
@@ -168,6 +163,7 @@ print goal_inliers
 laser_plane, b = run_ransac(laser_points, estimate, lambda x, y: is_inlier(x, y, 0.01), 3, goal_inliers, max_iterations)
 a, b, c, d = laser_plane
 xx, yy, zz = plot_plane(a, b, c, d)
+print laser_plane
 
 fit_points_h = augment(laser_points[:3])
 
@@ -185,7 +181,7 @@ xx2, yy2, zz2 = plot_plane(-1.757035634445412e-01, 9.613484363790542e-01,  2.119
 
 ax = plt.figure().gca(projection='3d')
 ax.plot_surface(xx, yy, zz, color=(1, 0, 0, 0.2))
-ax.plot_surface(xx2, yy2, zz2, color=(0, 0, 1, 0.2))
+#ax.plot_surface(xx2, yy2, zz2, color=(0, 0, 1, 0.2))
 ax.scatter3D(laser_points[:,0], laser_points[:,1], laser_points[:,2])
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')
