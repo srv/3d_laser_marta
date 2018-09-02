@@ -168,8 +168,6 @@ ap.add_argument("-t", "--table", required=True,
     help="Output prefix of the calibration result")
 args = vars(ap.parse_args())
 
-#def rotate_points(frame,points):
-#    calculate_rotation(frame)
 
 #------------------------------MAIN--------------------------------------------
 camera_matrix = np.load(args['calibration'])
@@ -217,7 +215,7 @@ camera_to_table_2 = np.identity(4)
 table_1_to_camera = np.identity(4)
 table_2_to_camera = np.identity(4)
 
-mask = cv2.imread('calibrations/mask3.png')
+mask = cv2.imread('calibrations/mask2.png')
 points = np.array([[],[],[]]).T
 step=1
 while step<321:

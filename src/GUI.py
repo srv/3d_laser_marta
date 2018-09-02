@@ -4,6 +4,12 @@
 import sys
 from PyQt4 import QtGui, QtCore
 from subprocess import Popen
+import GetData
+import test_center_Aruco
+import numpy as np
+import cv2
+
+import subprocess
 
 
 class Window(QtGui.QMainWindow):
@@ -12,31 +18,59 @@ class Window(QtGui.QMainWindow):
         super(Window, self).__init__()
         self.setGeometry(50, 50, 500, 300)
         self.setWindowTitle("Laser Scanner")
-        self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
+        self.setStyleSheet("background-color: white")
         self.Buttons()
+
+       
 
     def Buttons(self):
         btn = QtGui.QPushButton("Exit", self)
         btn.clicked.connect(self.close_application)
         btn.setStyleSheet("background-color: red")
         btn.resize(btn.minimumSizeHint())
-        btn.move(0,0)
+        btn.move(425,0)
         
-        self.btn1 = QtGui.QPushButton("Camera Calibration",self)
-        self.btn1.resize(100,50)
-        self.btn1.move(200,50)
-        self.btn1.clicked.connect(self.CameraCalib)
+        btn1 = QtGui.QPushButton("Camera Calibration",self)
+        btn1.resize(100,50)
+        btn1.move(50,50)
+        btn1.setStyleSheet("background-color: #80d4ff")
+        btn1.clicked.connect(self.CameraCalib)
         
-        self.btn = QtGui.QPushButton("Laser Calibration",self)
-        self.btn.resize(100,50)
-        self.btn.move(200,120)
-        self.btn.clicked.connect(self.LaserCalib)
+        btn2 = QtGui.QPushButton("Laser Calibration",self)
+        btn2.resize(100,50)
+        btn2.move(50,120)
+        btn2.setStyleSheet("background-color: #3399ff")
+        btn2.clicked.connect(self.LaserCalib)
         
-        self.btn = QtGui.QPushButton("Start Process",self)
-        self.btn.resize(100,50)
-        self.btn.move(200,190)
-        self.btn.clicked.connect(self.Start)
+        btn4 = QtGui.QPushButton("Table detection",self)
+        btn4.resize(100,50)
+        btn4.move(50,190)
+        btn4.setStyleSheet("background-color: #0066ff")
+        btn4.clicked.connect(self.Aruco)
         
+        btn4 = QtGui.QPushButton("Get Data",self)
+        btn4.resize(100,50)
+        btn4.move(200,120)
+        btn4.setStyleSheet("background-color: #ff6600")
+        btn4.clicked.connect(self.GetData)
+        
+        btn5 = QtGui.QPushButton("Preview Cam",self)
+        btn5.resize(100,50)
+        btn5.move(200,50)
+        btn5.setStyleSheet("background-color: orange")
+        btn5.clicked.connect(self.Preview)
+        
+        btn3 = QtGui.QPushButton("Offline Process",self)
+        btn3.resize(100,50)
+        btn3.move(350,50)
+        btn3.setStyleSheet("background-color: #bbff99")
+        btn3.clicked.connect(self.Start)
+        
+        btn3 = QtGui.QPushButton("Online Process",self)
+        btn3.resize(100,50)
+        btn3.move(350,120)
+        btn3.setStyleSheet("background-color: #66ff33")
+        btn3.clicked.connect(self.Start)
         
         self.show()
     
@@ -52,13 +86,38 @@ class Window(QtGui.QMainWindow):
         
     def CameraCalib(self):
         print 'CameraCalibration'
-        p = Popen("run_calibrate_camera.bat", cwd=r"C:\Users\Propietario\Documents\GitHub\3d_laser_marta\run_calibrate_camera.bat")
-        stdout, stderr = p.communicate()
+        
+#        filepath=r"C:/Users/Propietario/Documents/GitHub/3d_laser_marta/run_calibrate_camera.bat"
+#        p = subprocess.Popen(filepath, shell=True, stdout = subprocess.PIPE)
+#        stdout, stderr = p.communicate()
+#        print p.returncode # is 0 if success
+        
+#        p = Popen("run_calibrate_camera.bat", cwd=r"C:\Users\Propietario\Documents\GitHub\3d_laser_marta")
+#        stdout, stderr = p.communicate()
     def LaserCalib(self):
         print 'LaserCalibration'
     def Start(self):
         print 'Scanning'
-#        btn.clicked.connect(QtCore.QCoreApplication.instance().quit)
+    def GetData(self):
+        GetData.run()        
+    def Aruco(self):
+        test_center_Aruco.run()
+        
+    def Preview(self):
+        cap = cv2.VideoCapture(0)
+
+        while(True):
+            # Capture frame-by-frame
+            ret, frame = cap.read()
+            # Display the resulting frame
+            cv2.imshow('frame',frame)
+            if cv2.waitKey(1) & 0xFF == ord('e'):
+                break
+            
+        # When everything done, release the capture
+        cap.release()
+        cv2.destroyAllWindows()
+        
         
 
         
