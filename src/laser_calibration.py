@@ -29,7 +29,7 @@ def is_inlier(coeffs, xyz, threshold):
 	return np.abs(coeffs.dot(augment([xyz]).T)) < threshold
 
 def plot_plane(a, b, c, d):
-    xx, yy = np.mgrid[-3:3, -1:1]*0.1
+    xx, yy = np.mgrid[-3:3, -3:3]*0.1
     return xx, yy, (-d - a * xx - b * yy) / c
 
 def intersection(plane,point,mtx):
@@ -153,7 +153,7 @@ for fname in images:
 #%% Find laser plane with RANSAC
 
 max_iterations = 1000
-goal_inliers = laser_points.shape[0] * 0.85
+goal_inliers = laser_points.shape[0] * 0.9
 print goal_inliers
 #np.savetxt('laser_points.csv', laser_points, delimiter=' ')   # X is an array
 

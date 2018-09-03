@@ -6,6 +6,7 @@ import yaml
 # import the necessary packages
 import argparse
 
+print "I'm in"
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--dir", required=True,

@@ -78,16 +78,16 @@ def calculate_rotation_priority(frame, camera_matrix, dist_coeffs):
         cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
         R, _ = cv2.Rodrigues(rvecs)
         if ids[i][0]==5:
-            t = np.array([-0.09,0,0])
+            t = np.array([-0.075,0,0])
             tvecs=np.matmul(R,t.T)+tvecs
         elif ids[i][0]==42:
-            t = np.array([+0.09,0,0])
+            t = np.array([+0.075,0,0])
             tvecs=np.matmul(R,t.T)+tvecs
         elif ids[i][0]==27:
-            t = np.array([0,-0.09,0])
+            t = np.array([0,-0.075,0])
             tvecs=np.matmul(R,t.T)+tvecs
         elif ids[i][0]==18:
-            t = np.array([0,+0.09,0])
+            t = np.array([0,+0.075,0])
             tvecs=np.matmul(R,t.T)+tvecs
             # i=i+1
         else:
@@ -95,8 +95,8 @@ def calculate_rotation_priority(frame, camera_matrix, dist_coeffs):
 
         cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
         cv2.imshow('Tabe Calib',frame)
-#        write_name = 'CalibracioArucoPriority.jpg'
-#        cv2.imwrite(write_name, frame)
+        write_name = 'CalibracioArucoPriority.jpg'
+        cv2.imwrite(write_name, frame)
         cv2.waitKey(3)
     return (R,tvecs)
 
@@ -119,19 +119,19 @@ def calculate_rotation_all(frame, camera_matrix, dist_coeffs):
             cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
             if (ids[i]==5):
                 R,_=cv2.Rodrigues(rvecs)
-                t = np.array([-0.09,0,0])
+                t = np.array([-0.075,0,0])
                 tvecs5=np.matmul(R,t.T)+tvecs
             if (ids[i]==42):
                 R,_=cv2.Rodrigues(rvecs)
-                t = np.array([+0.09,0,0])
+                t = np.array([+0.075,0,0])
                 tvecs42=np.matmul(R,t.T)+tvecs
             if (ids[i]==27):
                 R,_=cv2.Rodrigues(rvecs)
-                t = np.array([0,-0.09,0])
+                t = np.array([0,-0.075,0])
                 tvecs27=np.matmul(R,t.T)+tvecs
             if (ids[i]==18):
                 R,_=cv2.Rodrigues(rvecs)
-                t = np.array([0,+0.09,0])
+                t = np.array([0,+0.075,0])
                 tvecs18=np.matmul(R,t.T)+tvecs
 
             i=i+1
@@ -222,7 +222,7 @@ while step<321:
     # Detect table
     if step < 2:
         fname = args['dir'] + '/step_num_table' + str(step) + '.' + args['format']
-#        fname = args['dir'] + '/step_num' + str(step) + '.' + args['format']
+    #        fname = args['dir'] + '/step_num' + str(step) + '.' + args['format']
         frameTable = cv2.imread(fname)
         newcamera, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, frameTable.shape[:2], 0)
         frameTable_rect = cv2.undistort(frameTable, camera_matrix, dist_coeffs, None, newcamera)
@@ -232,10 +232,12 @@ while step<321:
         if option_table == '2':
             print ('Table calibration with priority')
             R, tvec = calculate_rotation_priority(frameTable_rect, newcamera, 0)
+    #    if step<2:
         camera_to_table_1[0:3,0:3] = R
+        
         camera_to_table_1[0:3,3] = tvec
         print 'Table transform: \n' + str(camera_to_table_1)
-
+    
     table_1_to_camera = invHom(camera_to_table_1)
     camera_to_table_2 = np.matmul(table_to_rot, camera_to_table_1)
     table_2_to_camera = invHom(camera_to_table_2)

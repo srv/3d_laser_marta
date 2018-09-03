@@ -60,17 +60,23 @@ class Window(QtGui.QMainWindow):
         btn5.setStyleSheet("background-color: orange")
         btn5.clicked.connect(self.Preview)
         
+        btn5 = QtGui.QPushButton("Save Image",self)
+        btn5.resize(100,50)
+        btn5.move(200,190)
+        btn5.setStyleSheet("background-color: orange")
+        btn5.clicked.connect(self.Preview)
+        
         btn3 = QtGui.QPushButton("Offline Process",self)
         btn3.resize(100,50)
         btn3.move(350,50)
         btn3.setStyleSheet("background-color: #bbff99")
         btn3.clicked.connect(self.Start)
         
-        btn3 = QtGui.QPushButton("Online Process",self)
-        btn3.resize(100,50)
-        btn3.move(350,120)
-        btn3.setStyleSheet("background-color: #66ff33")
-        btn3.clicked.connect(self.Start)
+        btn6 = QtGui.QPushButton("Online Process",self)
+        btn6.resize(100,50)
+        btn6.move(350,120)
+        btn6.setStyleSheet("background-color: #66ff33")
+        btn6.clicked.connect(self.Start)
         
         self.show()
     
@@ -87,10 +93,10 @@ class Window(QtGui.QMainWindow):
     def CameraCalib(self):
         print 'CameraCalibration'
         
-#        filepath=r"C:/Users/Propietario/Documents/GitHub/3d_laser_marta/run_calibrate_camera.bat"
-#        p = subprocess.Popen(filepath, shell=True, stdout = subprocess.PIPE)
-#        stdout, stderr = p.communicate()
-#        print p.returncode # is 0 if success
+        params={"-d", "images\camera_calibration\240818", "-f", "jpg","-o", "calibrations\240818"}
+        p = subprocess.Popen("python calibrate_camera.py")
+        stdout, stderr = p.communicate()
+        print p.returncode # is 0 if success
         
 #        p = Popen("run_calibrate_camera.bat", cwd=r"C:\Users\Propietario\Documents\GitHub\3d_laser_marta")
 #        stdout, stderr = p.communicate()
@@ -113,6 +119,20 @@ class Window(QtGui.QMainWindow):
             cv2.imshow('frame',frame)
             if cv2.waitKey(1) & 0xFF == ord('e'):
                 break
+            
+        # When everything done, release the capture
+        cap.release()
+        cv2.destroyAllWindows()
+        
+    def Capture(self):
+        cap = cv2.VideoCapture(0)
+
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+        # Display the resulting frame
+        cv2.imshow('frame',frame)
+        write_name = './images/Image.jpg'
+        cv2.imwrite(write_name, frame)    
             
         # When everything done, release the capture
         cap.release()
