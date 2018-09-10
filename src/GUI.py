@@ -8,6 +8,7 @@ import GetData
 import test_center_Aruco
 import numpy as np
 import cv2
+import time
 
 import subprocess
 
@@ -64,7 +65,7 @@ class Window(QtGui.QMainWindow):
         btn5.resize(100,50)
         btn5.move(200,190)
         btn5.setStyleSheet("background-color: orange")
-        btn5.clicked.connect(self.Preview)
+        btn5.clicked.connect(self.Capture)
         
         btn3 = QtGui.QPushButton("Offline Process",self)
         btn3.resize(100,50)
@@ -126,13 +127,18 @@ class Window(QtGui.QMainWindow):
         
     def Capture(self):
         cap = cv2.VideoCapture(0)
+        time.sleep(1)
 
         # Capture frame-by-frame
         ret, frame = cap.read()
-        # Display the resulting frame
-        cv2.imshow('frame',frame)
-        write_name = './images/Image.jpg'
-        cv2.imwrite(write_name, frame)    
+        time.sleep(1)
+        if ret==True:
+            # Display the resulting frame
+            cv2.imshow('frame',frame)
+            time.sleep(1)
+            write_name = './images/dataset/040918/Image.jpg'
+            cv2.imwrite(write_name, frame)
+            time.sleep(1)
             
         # When everything done, release the capture
         cap.release()

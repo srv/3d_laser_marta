@@ -2,7 +2,9 @@
 """
 Created on Tue Jul 17 19:40:21 2018
 
-@author: Propietario
+Programa principal per a realitzar una reconstrucció Offline
+
+@author: Marta Pons Nieto
 """
 
 from laser_detector import detect_laser_subpixel
@@ -10,13 +12,10 @@ import copy
 import cv2
 import numpy as np
 from math import isnan, sqrt
-import glob
-import serial
-import time
 from matplotlib import pylab
 from mpl_toolkits import mplot3d
 from pointcloud_viewer import ReconstructionViewer
-import open3d
+
 
 def invHom(m):
     R = m[0:3,0:3]
@@ -27,22 +26,6 @@ def invHom(m):
     minv[0:3,3] = np.matmul(R.T,-t)
 
     return minv
-
-def outOfBounds(point,tvec):
-    #Si la x esta fuera de los limites de la mesa
-    if point[0]>tvec[0]+0.15:
-        return True
-    elif point[0]<tvec[0]-0.15:
-        return True
-    #O la coordenada y esta fuera de los limites
-    elif point[1]>tvec[1]+0.15:
-        return True
-    elif point[1]<tvec[1]+0.15:
-        return True
-    else:
-        return False
-    #Sino se considerara como un punto acceptable
-
 
 def intersection(plane,point,mtx):
     fx = mtx[0,0]
@@ -89,14 +72,11 @@ def calculate_rotation_priority(frame, camera_matrix, dist_coeffs):
         elif ids[i][0]==18:
             t = np.array([0,+0.075,0])
             tvecs=np.matmul(R,t.T)+tvecs
-            # i=i+1
         else:
             print "Marker "+str(ids[i])+" NOT found!!!"
 
         cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
         cv2.imshow('Tabe Calib',frame)
-        write_name = 'CalibracioArucoPriority.jpg'
-        cv2.imwrite(write_name, frame)
         cv2.waitKey(3)
     return (R,tvecs)
 
@@ -140,8 +120,6 @@ def calculate_rotation_all(frame, camera_matrix, dist_coeffs):
             
         cv2.aruco.drawAxis(frame,camera_matrix,dist_coeffs,rvecs,tvecs,0.05)
         cv2.imshow('Tabe Calib',frame)
-#        write_name = 'CalibracioArucoAll.jpg'
-#        cv2.imwrite(write_name, frame)
         cv2.waitKey(3)
 
     return (R,tvecs)
@@ -189,7 +167,7 @@ print laser_plane
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 kernel = np.array([[0.000003, 0.000229, 0.005977, 0.060598, 0.24173, 0.382925, 0.24173, 0.060598, 0.005977, 0.000229, 0.000003]], np.float32)
-threshold = 0.02
+threshold = 0.002
 
 window_size = 7
 
@@ -222,7 +200,6 @@ while step<321:
     # Detect table
     if step < 2:
         fname = args['dir'] + '/step_num_table' + str(step) + '.' + args['format']
-    #        fname = args['dir'] + '/step_num' + str(step) + '.' + args['format']
         frameTable = cv2.imread(fname)
         newcamera, roi = cv2.getOptimalNewCameraMatrix(camera_matrix, dist_coeffs, frameTable.shape[:2], 0)
         frameTable_rect = cv2.undistort(frameTable, camera_matrix, dist_coeffs, None, newcamera)
@@ -232,9 +209,8 @@ while step<321:
         if option_table == '2':
             print ('Table calibration with priority')
             R, tvec = calculate_rotation_priority(frameTable_rect, newcamera, 0)
-    #    if step<2:
-        camera_to_table_1[0:3,0:3] = R
         
+        camera_to_table_1[0:3,0:3] = R
         camera_to_table_1[0:3,3] = tvec
         print 'Table transform: \n' + str(camera_to_table_1)
     
@@ -297,8 +273,7 @@ print "Proceso acabado"
 np.savetxt('reconstruct_points.csv', laser_points, delimiter=' ')   # X is an array
 viewer.save()
 viewer.run()
-#else:
-#    cv2.destroyAllWindows()
+
 
 
 
